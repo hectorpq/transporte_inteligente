@@ -1,0 +1,69 @@
+name: transporte_inteligente
+description: Sistema de transporte colectivo inteligente con rastreo en tiempo real
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Material Design
+  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.9
+  
+  # Mapas y Localización
+  google_maps_flutter: ^2.5.0
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  flutter_polyline_points: ^2.0.1
+  
+  # Comunicación en Tiempo Real
+  socket_io_client: ^2.0.3+1
+  
+  # HTTP y API
+  http: ^1.1.2
+  dio: ^5.4.0  # Alternativa más robusta a http
+  
+  # Gestión de Estado
+  provider: ^6.1.1
+  
+  # Almacenamiento Local
+  shared_preferences: ^2.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # Permisos
+  permission_handler: ^11.1.0
+  
+  # Utilidades
+  intl: ^0.18.1  # Formateo de fechas/números
+  connectivity_plus: ^5.0.2  # Verificar conexión
+  logger: ^2.0.2+1  # Logs
+  
+  # Notificaciones (para alertas de llegada)
+  flutter_local_notifications: ^16.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/markers/
+  
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
