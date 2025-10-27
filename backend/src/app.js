@@ -9,6 +9,7 @@ const db = require('./config/database');
 // Importar rutas
 const busRoutes = require('./routes/busRoutes');
 const rutaRoutes = require('./routes/rutaRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 // Crear app Express
 const app = express();
@@ -48,6 +49,7 @@ app.get('/', (req, res) => {
     endpoints: {
       buses: '/api/buses',
       rutas: '/api/rutas',
+      chat: '/api/chat',
       websocket: `ws://localhost:${PORT}`
     }
   });
@@ -56,6 +58,7 @@ app.get('/', (req, res) => {
 // Rutas de la API
 app.use('/api/buses', busRoutes);
 app.use('/api/rutas', rutaRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Ruta de salud
 app.get('/health', (req, res) => {
@@ -185,9 +188,14 @@ if (process.env.NODE_ENV === 'development') {
 
   // Interpolar entre dos puntos
   const interpolar = (lat1, lon1, lat2, lon2, progreso) => {
+    const latNum1 = parseFloat(lat1);
+    const lonNum1 = parseFloat(lon1);
+    const latNum2 = parseFloat(lat2);
+    const lonNum2 = parseFloat(lon2);
+    
     return {
-      lat: lat1 + (lat2 - lat1) * progreso,
-      lon: lon1 + (lon2 - lon1) * progreso
+      lat: latNum1 + (latNum2 - latNum1) * progreso,
+      lon: lonNum1 + (lonNum2 - lonNum1) * progreso
     };
   };
 
@@ -291,18 +299,20 @@ if (process.env.NODE_ENV === 'development') {
           siguienteParada.longitud
         );
 
+        // Guardar en base de datos
         await db.query(`
-        INSERT INTO ubicaciones_tiempo_real 
-        (bus_id, latitud, longitud, velocidad, direccion, altitud)
-        VALUES ($1, $2, $3, $4, $5, 3825)
+          INSERT INTO ubicaciones_tiempo_real 
+          (bus_id, latitud, longitud, velocidad, direccion, altitud)
+          VALUES ($1, $2, $3, $4, $5, 3825)
         `, [
-        busId,
-        parseFloat(estado.latitud),
-        parseFloat(estado.longitud),
-        parseFloat(estado.velocidad),
-        Math.round(direccion)
+          busId,
+          parseFloat(estado.latitud),
+          parseFloat(estado.longitud),
+          parseFloat(estado.velocidad),
+          Math.round(direccion)
         ]);
-// Emitir por WebSocket a todos los clientes
+
+        // Emitir por WebSocket a todos los clientes
         io.emit('bus-update', {
           bus_id: busId,
           placa: estado.placa,
@@ -338,6 +348,7 @@ if (process.env.NODE_ENV === 'development') {
     console.log('✅ Simulador GPS en ejecución (actualización cada 2 segundos)');
   });
 }
+
 // ============ MANEJO DE ERRORES ============
 app.use((err, req, res, next) => {
   console.error('❌ Error:', err);
