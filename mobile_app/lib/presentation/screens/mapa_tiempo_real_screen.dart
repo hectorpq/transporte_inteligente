@@ -6,17 +6,17 @@ import 'package:geolocator/geolocator.dart';
 import '../providers/bus_provider.dart';
 import '../providers/ruta_provider.dart';
 import '../providers/ubicacion_provider.dart';
-import '../providers/conductor_provider.dart'; // 🆕 NUEVO
+import '../providers/conductor_provider.dart';
 import '../../widgets/tiempo_llegada_widget.dart';
 import '../../config/constants.dart';
 
 class MapaTiempoRealScreen extends StatefulWidget {
-  final bool modoConductor; // 🆕 NUEVO PARÁMETRO
-  final String? lineaConductor; // 🆕 NUEVO PARÁMETRO
+  final bool modoConductor;
+  final String? lineaConductor;
 
   const MapaTiempoRealScreen({
     Key? key,
-    this.modoConductor = false, // 🆕 Por defecto modo usuario
+    this.modoConductor = false,
     this.lineaConductor,
   }) : super(key: key);
 
@@ -34,6 +34,18 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
     super.initState();
     _obtenerUbicacionUsuario();
     _conectarWebSocket();
+    _cargarRutaInicial();
+  }
+
+  // 🆕 NUEVO MÉTODO: Cargar ruta inicial según modo
+  Future<void> _cargarRutaInicial() async {
+    final rutaProvider = context.read<RutaProvider>();
+
+    if (widget.modoConductor && widget.lineaConductor != null) {
+      // MODO CONDUCTOR: Cargar solo su ruta
+      await rutaProvider.cargarRutaConductor(widget.lineaConductor!);
+    }
+    // MODO USUARIO: No cargar ruta inicial (el usuario seleccionará una)
   }
 
   Future<void> _obtenerUbicacionUsuario() async {
@@ -113,10 +125,9 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
               builder: (context, rutaProvider, child) {
                 final rutaSeleccionada = rutaProvider.rutaSeleccionada;
 
-                // 🆕 EN MODO CONDUCTOR: Mostrar siempre la ruta de la línea
-                if (widget.modoConductor && widget.lineaConductor != null) {
-                  // Aquí cargarías la ruta específica del conductor
-                  // Por ahora mostramos la ruta seleccionada si existe
+                // 🆕 MODO CONDUCTOR: Mostrar siempre su ruta
+                if (widget.modoConductor && rutaSeleccionada == null) {
+                  return const SizedBox.shrink();
                 }
 
                 if (rutaSeleccionada == null) {
@@ -129,8 +140,11 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                     if (rutaSeleccionada.coordinadasIda.isNotEmpty)
                       Polyline(
                         points: rutaSeleccionada.coordinadasIda,
-                        color: Colors.blue.shade700,
-                        strokeWidth: 5.0,
+                        color: widget.modoConductor
+                            ? Colors
+                                .orange.shade700 // 🆕 Naranja para conductor
+                            : Colors.blue.shade700, // Azul para usuario
+                        strokeWidth: widget.modoConductor ? 6.0 : 5.0,
                         borderColor: Colors.white,
                         borderStrokeWidth: 2.0,
                       ),
@@ -139,8 +153,11 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                     if (rutaSeleccionada.coordinadasVuelta.isNotEmpty)
                       Polyline(
                         points: rutaSeleccionada.coordinadasVuelta,
-                        color: Colors.red.shade700,
-                        strokeWidth: 5.0,
+                        color: widget.modoConductor
+                            ? Colors.orange
+                                .shade600 // 🆕 Naranja claro para conductor
+                            : Colors.red.shade700, // Rojo para usuario
+                        strokeWidth: widget.modoConductor ? 6.0 : 5.0,
                         borderColor: Colors.white,
                         borderStrokeWidth: 2.0,
                       ),
@@ -416,11 +433,14 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
 
   // 🆕 MÉTODO PARA CAMBIAR SENTIDO (MODO CONDUCTOR)
   void _cambiarSentido() {
+    final conductorProvider = context.read<ConductorProvider>();
+    final sentidoActual = conductorProvider.sentidoActual;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Cambiar Sentido'),
-        content: Text('Selecciona el sentido de la ruta:'),
+        content: Text('Sentido actual: ${sentidoActual.toUpperCase()}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -429,8 +449,13 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Aquí implementarías el cambio de sentido
-              print('Sentido cambiado a IDA');
+              conductorProvider.cambiarSentido('ida');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Sentido cambiado a IDA'),
+                  backgroundColor: Colors.blue,
+                ),
+              );
             },
             child: Text('IDA'),
             style:
@@ -439,8 +464,13 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Aquí implementarías el cambio de sentido
-              print('Sentido cambiado a VUELTA');
+              conductorProvider.cambiarSentido('vuelta');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Sentido cambiado a VUELTA'),
+                  backgroundColor: Colors.red,
+                ),
+              );
             },
             child: Text('VUELTA'),
             style:

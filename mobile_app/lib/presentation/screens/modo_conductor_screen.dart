@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/conductor_provider.dart';
+import '../providers/ruta_provider.dart';
 import 'mapa_tiempo_real_screen.dart';
 
 class ModoConductorScreen extends StatelessWidget {
@@ -19,7 +20,7 @@ class ModoConductorScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => _confirmarLogout(context), // ✅ CORREGIDO
+            onPressed: () => _confirmarLogout(context),
             tooltip: 'Cerrar sesión',
           ),
         ],
@@ -56,6 +57,19 @@ class ModoConductorScreen extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.grey.shade600,
                         ),
+                      ),
+                      // 🆕 MOSTRAR SENTIDO ACTUAL
+                      Consumer<ConductorProvider>(
+                        builder: (context, conductorProvider, child) {
+                          return Text(
+                            'Sentido: ${conductorProvider.sentidoActual.toUpperCase()}',
+                            style: TextStyle(
+                              color: Colors.orange.shade700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -109,17 +123,53 @@ class ModoConductorScreen extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
+                      Consumer<ConductorProvider>(
+                        builder: (context, conductorProvider, child) {
+                          return Text(
+                            'Estado: ${conductorProvider.estaLogeado ? "Conectado" : "Desconectado"}',
+                            style: TextStyle(
+                              color: conductorProvider.estaLogeado
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                              fontSize: 10,
+                            ),
+                          );
+                        },
+                      ),
+                      // 🆕 INFO DE LA RUTA CARGADA
+                      Consumer<RutaProvider>(
+                        builder: (context, rutaProvider, child) {
+                          final ruta = rutaProvider.rutaSeleccionada;
+                          if (ruta != null) {
+                            return Text(
+                              'Puntos de ruta: ${ruta.coordinadasIda.length + ruta.coordinadasVuelta.length}',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 10,
+                              ),
+                            );
+                          }
+                          return Text(
+                            'Cargando ruta...',
+                            style: TextStyle(
+                              color: Colors.orange.shade700,
+                              fontSize: 10,
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    _cambiarSentido(context); // ✅ CORREGIDO
+                    _cambiarSentido(context);
                   },
                   icon: const Icon(Icons.swap_horiz),
                   label: const Text('Cambiar Sentido'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
@@ -130,7 +180,7 @@ class ModoConductorScreen extends StatelessWidget {
     );
   }
 
-  // ✅ CORREGIDO: Recibe context como parámetro
+  // ✅ CONFIRMAR LOGOUT
   Future<void> _confirmarLogout(BuildContext context) async {
     final confirmar = await showDialog<bool>(
       context: context,
@@ -162,8 +212,7 @@ class ModoConductorScreen extends StatelessWidget {
     }
   }
 
-  // ✅ NUEVO MÉTODO: Cambiar sentido
-  // ✅ MÉTODO ACTUALIZADO: Cambiar sentido
+  // ✅ CAMBIAR SENTIDO
   void _cambiarSentido(BuildContext context) {
     final conductorProvider = context.read<ConductorProvider>();
     final sentidoActual = conductorProvider.sentidoActual;
@@ -186,6 +235,7 @@ class ModoConductorScreen extends StatelessWidget {
                 const SnackBar(
                   content: Text('Sentido cambiado a IDA'),
                   backgroundColor: Colors.blue,
+                  duration: Duration(seconds: 2),
                 ),
               );
             },
@@ -202,6 +252,7 @@ class ModoConductorScreen extends StatelessWidget {
                 const SnackBar(
                   content: Text('Sentido cambiado a VUELTA'),
                   backgroundColor: Colors.red,
+                  duration: Duration(seconds: 2),
                 ),
               );
             },

@@ -1,5 +1,3 @@
-// lib/services/api_service.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/constants.dart';
@@ -141,7 +139,7 @@ class ApiService {
     required String linea,
   }) async {
     try {
-      final result = await post('/conductor/login', {
+      final result = await post(AppConstants.conductorLoginEndpoint, {
         'correo': correo,
         'contrasena': contrasena,
         'placa': placa,
@@ -165,7 +163,7 @@ class ApiService {
     String? sentido,
   }) async {
     try {
-      final result = await post('/conductor/ubicacion', {
+      final result = await post(AppConstants.conductorUbicacionEndpoint, {
         'conductor_id': conductorId,
         'latitud': latitud,
         'longitud': longitud,
@@ -185,7 +183,7 @@ class ApiService {
   // 🆕 NUEVO MÉTODO: Obtener ruta del conductor
   Future<Map<String, dynamic>?> getRutaConductor(String linea) async {
     try {
-      final result = await get('/rutas/linea/$linea');
+      final result = await get('${AppConstants.conductorRutaEndpoint}/$linea');
       return result['data'];
     } catch (e) {
       print('Error al obtener ruta del conductor: $e');
@@ -199,7 +197,7 @@ class ApiService {
     required String sentido,
   }) async {
     try {
-      final result = await post('/conductor/cambiar-sentido', {
+      final result = await post(AppConstants.cambiarSentidoEndpoint, {
         'conductor_id': conductorId,
         'sentido': sentido,
       });

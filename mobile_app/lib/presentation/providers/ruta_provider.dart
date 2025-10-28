@@ -183,6 +183,33 @@ class RutaProvider with ChangeNotifier {
     }
   }
 
+  // ════════════════════════════════════════════════════════
+  // 🆕 CARGAR RUTA ESPECÍFICA DEL CONDUCTOR
+  // ════════════════════════════════════════════════════════
+  Future<void> cargarRutaConductor(String linea) async {
+    _cargando = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      print('🚗 Cargando ruta del conductor - Línea: $linea');
+      _rutaSeleccionada = await _repository.getRutaPorLinea(linea);
+
+      if (_rutaSeleccionada != null) {
+        print('✅ Ruta del conductor cargada: ${_rutaSeleccionada!.nombre}');
+      } else {
+        _error = 'No se encontró la ruta para la línea $linea';
+      }
+
+      _cargando = false;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Error al cargar ruta del conductor: $e';
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
   // Limpiar error
   void limpiarError() {
     _error = null;

@@ -1,5 +1,3 @@
-// lib/presentation/screens/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,9 +8,9 @@ import '../../widgets/buscador_destino_widget.dart';
 import '../../widgets/resultado_busqueda_widget.dart';
 import '../providers/ruta_provider.dart';
 import '../providers/ubicacion_provider.dart';
+import '../providers/conductor_provider.dart';
 import 'welcome_screen.dart';
-import 'login_conductor_screen.dart'; // 🆕 AGREGAR ESTA LÍNEA
-import '../providers/conductor_provider.dart'; // 🆕 NUEVO IMPORT
+import 'login_conductor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -39,18 +37,25 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _inicializarDatos() async {
     final ubicacionProvider = context.read<UbicacionProvider>();
     final rutaProvider = context.read<RutaProvider>();
+    final conductorProvider = context.read<ConductorProvider>();
 
     // Obtener ubicación del usuario
     await ubicacionProvider.obtenerUbicacionActual();
 
-    // Cargar rutas cercanas
-    final posicion = ubicacionProvider.posicionActual;
-    if (posicion != null) {
-      await rutaProvider.cargarRutasCercanas(
-        posicion.latitude,
-        posicion.longitude,
-        radioKm: 3.0,
-      );
+    // 🆕 DIFERENCIAR ENTRE MODO USUARIO Y CONDUCTOR
+    if (conductorProvider.estaLogeado) {
+      // MODO CONDUCTOR: No cargar rutas cercanas, ya se carga su ruta específica
+      print('🚗 Modo conductor activo - No cargar rutas cercanas');
+    } else {
+      // MODO USUARIO: Cargar rutas cercanas como siempre
+      final posicion = ubicacionProvider.posicionActual;
+      if (posicion != null) {
+        await rutaProvider.cargarRutasCercanas(
+          posicion.latitude,
+          posicion.longitude,
+          radioKm: 3.0,
+        );
+      }
     }
   }
 
@@ -95,8 +100,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // El mapa ya se actualizará automáticamente gracias al Provider
   }
-
-  // ... (código anterior igual hasta _mostrarMenuPerfil)
 
   void _mostrarMenuPerfil() async {
     final conductorProvider = context.read<ConductorProvider>();

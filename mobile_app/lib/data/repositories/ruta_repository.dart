@@ -1,5 +1,3 @@
-// lib/data/repositories/ruta_repository.dart
-
 import 'package:latlong2/latlong.dart';
 import '../models/ruta_model.dart';
 import '../models/parada_model.dart';
@@ -9,8 +7,8 @@ import '../dummy_data.dart'; // 🧪 Solo como fallback
 class RutaRepository {
   final ApiService _apiService = ApiService();
 
-  // 🔧 Flag para modo de desarrollo (cambia a false cuando tengas API)
-  final bool _usarDatosPrueba = true; // ← Cambia a false cuando tengas API
+  // 🔧 CAMBIA A FALSE PARA USAR API REAL
+  final bool _usarDatosPrueba = false; // ← CAMBIA A FALSE
 
   // ════════════════════════════════════════════════════════
   // OBTENER TODAS LAS RUTAS
@@ -18,7 +16,7 @@ class RutaRepository {
   Future<List<RutaModel>> getRutas() async {
     if (_usarDatosPrueba) {
       print('🧪 Usando datos de prueba (dummy_data)');
-      await Future.delayed(Duration(milliseconds: 500)); // Simular latencia
+      await Future.delayed(Duration(milliseconds: 500));
       return DummyData.rutasPrueba;
     }
 
@@ -48,22 +46,6 @@ class RutaRepository {
 
     try {
       print('🌐 Obteniendo ruta completa $rutaId desde API...');
-
-      // Tu API debería devolver algo como:
-      // {
-      //   "ruta_id": 1,
-      //   "nombre": "Línea 18",
-      //   "color": "#FF9800",
-      //   "coordenadas_ida": [
-      //     {"latitud": -15.484, "longitud": -70.142, "orden": 1},
-      //     ...
-      //   ],
-      //   "coordenadas_vuelta": [
-      //     {"latitud": -15.474, "longitud": -70.138, "orden": 1},
-      //     ...
-      //   ]
-      // }
-
       final data = await _apiService.getRutaConParadas(rutaId);
       if (data == null) return null;
 
@@ -86,20 +68,15 @@ class RutaRepository {
     double radioKm = 3.0,
   }) async {
     if (_usarDatosPrueba) {
-      print(
-          '🧪 Buscando rutas cercanas (dummy) a ($lat, $lng) - Radio: ${radioKm}km');
+      print('🧪 Buscando rutas cercanas (dummy) a ($lat, $lng)');
       await Future.delayed(Duration(milliseconds: 400));
       return DummyData.obtenerRutasCercanas(lat, lng, radioKm);
     }
 
     try {
       print('🌐 Obteniendo rutas cercanas desde API...');
-
-      // Tu API debería tener un endpoint como:
-      // GET /api/rutas/cercanas?lat=-15.48&lng=-70.14&radio=3
-
       final endpoint =
-          '/rutas/cercanas?lat=$lat&lng=$lng&radio=${radioKm * 1000}'; // metros
+          '/rutas/cercanas?lat=$lat&lng=$lng&radio=${radioKm * 1000}';
       final result = await _apiService.get(endpoint);
       final data = result['data'] ?? [];
 
@@ -128,10 +105,6 @@ class RutaRepository {
 
     try {
       print('🌐 Buscando rutas por destino desde API...');
-
-      // Tu API debería tener un endpoint como:
-      // GET /api/rutas/buscar?destino=Plaza%20de%20Armas&lat=-15.48&lng=-70.14&radio=5000
-
       final endpoint =
           '/rutas/buscar?destino=$destino&lat=$miLat&lng=$miLng&radio=${radioKm * 1000}';
       final result = await _apiService.get(endpoint);
@@ -142,6 +115,40 @@ class RutaRepository {
       print('❌ Error en buscarRutasPorDestino: $e');
       print('🔄 Fallback a datos de prueba');
       return DummyData.buscarRutasPorDestino(destino, miLat, miLng, radioKm);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  // 🆕 OBTENER RUTA ESPECÍFICA DE UNA LÍNEA (PARA CONDUCTOR)
+  // ════════════════════════════════════════════════════════
+  Future<RutaModel?> getRutaPorLinea(String linea) async {
+    if (_usarDatosPrueba) {
+      print('🧪 Buscando ruta para línea: $linea (dummy)');
+      await Future.delayed(Duration(milliseconds: 300));
+      return DummyData.rutasPrueba.firstWhere(
+        (ruta) => ruta.nombre.toLowerCase().contains(linea.toLowerCase()),
+        orElse: () => DummyData.rutasPrueba.first,
+      );
+    }
+
+    try {
+      print('🌐 Obteniendo ruta para línea: $linea desde API...');
+      final endpoint = '/rutas/linea/$linea';
+      final result = await _apiService.get(endpoint);
+      final data = result['data'];
+
+      if (data != null) {
+        return RutaModel.fromJson(data);
+      }
+
+      return null;
+    } catch (e) {
+      print('❌ Error en getRutaPorLinea: $e');
+      print('🔄 Fallback a datos de prueba');
+      return DummyData.rutasPrueba.firstWhere(
+        (ruta) => ruta.nombre.toLowerCase().contains(linea.toLowerCase()),
+        orElse: () => DummyData.rutasPrueba.first,
+      );
     }
   }
 

@@ -2,14 +2,13 @@ class AppConstants {
   // ════════════════════════════════════════════════════════
   // 🚀 PRODUCCIÓN - API EN VERCEL
   // ════════════════════════════════════════════════════════
-  //static const String baseUrl = 'https://trasporte-inteligente.vercel.app';
-  //static const String wsUrl = 'wss://trasporte-inteligente.vercel.app';
-
+  static const String baseUrl = 'http://trasporte-inteligente.vercel.app';
+  static const String wsUrl = 'ws://trasporte-inteligente.vercel.app';
   // ════════════════════════════════════════════════════════
   // 🧪 DESARROLLO - API LOCAL (comentado)
   // ════════════════════════════════════════════════════════
-  static const String baseUrl = 'http://192.168.0.105:3000';
-  static const String wsUrl = 'ws://192.168.0.105:3000';
+  // static const String baseUrl = 'http://192.168.0.105:3000';
+  // static const String wsUrl = 'ws://192.168.0.105:3000';
 
   // ════════════════════════════════════════════════════════
   // ENDPOINTS
@@ -19,7 +18,7 @@ class AppConstants {
   static const String chatEndpoint = '/api/chat';
   static const String busesCercanosEndpoint = '/api/buses/cercanos';
 
-  // 🆕 NUEVOS ENDPOINTS PARA CONDUCTOR
+  // 🆕 ENDPOINTS PARA CONDUCTOR
   static const String conductorLoginEndpoint = '/api/conductor/login';
   static const String conductorUbicacionEndpoint = '/api/conductor/ubicacion';
   static const String conductorRutaEndpoint = '/api/conductor/ruta';

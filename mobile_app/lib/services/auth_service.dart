@@ -4,7 +4,7 @@ import '../data/models/conductor_model.dart';
 import '../config/constants.dart';
 
 class AuthService {
-  // ✅ LOGIN REAL CON TU API LOCAL
+  // ✅ LOGIN REAL CON TU API EN VERCEL
   static Future<Conductor?> loginConductor({
     required String correo,
     required String contrasena,
@@ -172,6 +172,5 @@ class AuthService {
 
   static Future<void> logout() async {
     print('🚪 Sesión de conductor cerrada');
-    // Aquí puedes limpiar tokens si usas JWT
   }
 }
