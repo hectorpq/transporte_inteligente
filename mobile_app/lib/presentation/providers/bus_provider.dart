@@ -1,5 +1,3 @@
-// lib/presentation/providers/bus_provider.dart
-
 import 'package:flutter/foundation.dart';
 import '../../data/models/bus_model.dart';
 import '../../data/repositories/bus_repository.dart';
@@ -88,6 +86,28 @@ class BusProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _error = 'Error al cargar buses cercanos: $e';
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  // 🆕 NUEVO MÉTODO: Cargar buses por línea específica (para modo conductor)
+  Future<void> cargarBusesPorLinea(String linea) async {
+    _cargando = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Primero cargamos todos los buses
+      final todosLosBuses = await _repository.getBuses();
+
+      // Luego filtramos por línea
+      _buses = todosLosBuses.where((bus) => bus.rutaNombre == linea).toList();
+
+      _cargando = false;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Error al cargar buses de la línea $linea: $e';
       _cargando = false;
       notifyListeners();
     }

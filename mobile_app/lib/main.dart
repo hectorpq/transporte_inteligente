@@ -6,6 +6,7 @@ import 'presentation/providers/bus_provider.dart';
 import 'presentation/providers/ruta_provider.dart';
 import 'presentation/providers/ubicacion_provider.dart';
 import 'presentation/providers/chat_provider.dart';
+import 'presentation/providers/conductor_provider.dart';
 import 'presentation/screens/welcome_screen.dart';
 
 void main() {
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RutaProvider()),
         ChangeNotifierProvider(create: (_) => UbicacionProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ConductorProvider()),
       ],
       child: MaterialApp(
         title: 'Transporte Inteligente',

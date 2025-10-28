@@ -1,5 +1,3 @@
-// lib/config/constants.dart
-
 class AppConstants {
   // ════════════════════════════════════════════════════════
   // 🚀 PRODUCCIÓN - API EN VERCEL
@@ -20,6 +18,12 @@ class AppConstants {
   static const String rutasEndpoint = '/api/rutas';
   static const String chatEndpoint = '/api/chat';
   static const String busesCercanosEndpoint = '/api/buses/cercanos';
+
+  // 🆕 NUEVOS ENDPOINTS PARA CONDUCTOR
+  static const String conductorLoginEndpoint = '/api/conductor/login';
+  static const String conductorUbicacionEndpoint = '/api/conductor/ubicacion';
+  static const String conductorRutaEndpoint = '/api/conductor/ruta';
+  static const String cambiarSentidoEndpoint = '/api/conductor/cambiar-sentido';
 
   // ════════════════════════════════════════════════════════
   // ✅ MAPA CENTRADO EN JULIACA (Línea 18)

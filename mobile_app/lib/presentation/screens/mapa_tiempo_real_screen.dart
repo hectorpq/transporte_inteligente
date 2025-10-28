@@ -1,5 +1,3 @@
-// lib/presentation/screens/mapa_tiempo_real_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,11 +6,19 @@ import 'package:geolocator/geolocator.dart';
 import '../providers/bus_provider.dart';
 import '../providers/ruta_provider.dart';
 import '../providers/ubicacion_provider.dart';
+import '../providers/conductor_provider.dart'; // 🆕 NUEVO
 import '../../widgets/tiempo_llegada_widget.dart';
 import '../../config/constants.dart';
 
 class MapaTiempoRealScreen extends StatefulWidget {
-  const MapaTiempoRealScreen({Key? key}) : super(key: key);
+  final bool modoConductor; // 🆕 NUEVO PARÁMETRO
+  final String? lineaConductor; // 🆕 NUEVO PARÁMETRO
+
+  const MapaTiempoRealScreen({
+    Key? key,
+    this.modoConductor = false, // 🆕 Por defecto modo usuario
+    this.lineaConductor,
+  }) : super(key: key);
 
   @override
   State<MapaTiempoRealScreen> createState() => _MapaTiempoRealScreenState();
@@ -64,7 +70,14 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
   Future<void> _conectarWebSocket() async {
     final busProvider = context.read<BusProvider>();
     await busProvider.conectarWebSocket();
-    await busProvider.cargarBuses();
+
+    // 🆕 EN MODO CONDUCTOR: Cargar solo buses de la misma línea
+    if (widget.modoConductor && widget.lineaConductor != null) {
+      await busProvider.cargarBusesPorLinea(widget.lineaConductor!);
+    } else {
+      // MODO USUARIO: Cargar todos los buses
+      await busProvider.cargarBuses();
+    }
   }
 
   @override
@@ -94,11 +107,17 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
             ),
 
             // ════════════════════════════════════════════════════════
-            // 🆕 RUTAS IDA (AZUL) Y VUELTA (ROJO)
+            // RUTAS IDA (AZUL) Y VUELTA (ROJO)
             // ════════════════════════════════════════════════════════
             Consumer<RutaProvider>(
               builder: (context, rutaProvider, child) {
                 final rutaSeleccionada = rutaProvider.rutaSeleccionada;
+
+                // 🆕 EN MODO CONDUCTOR: Mostrar siempre la ruta de la línea
+                if (widget.modoConductor && widget.lineaConductor != null) {
+                  // Aquí cargarías la ruta específica del conductor
+                  // Por ahora mostramos la ruta seleccionada si existe
+                }
 
                 if (rutaSeleccionada == null) {
                   return const SizedBox.shrink();
@@ -135,12 +154,26 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
             // ════════════════════════════════════════════════════════
             Consumer<BusProvider>(
               builder: (context, busProvider, child) {
+                // 🆕 FILTRAR BUSES: En modo conductor solo mostrar buses de la misma línea
+                final buses = widget.modoConductor &&
+                        widget.lineaConductor != null
+                    ? busProvider.buses
+                        .where((bus) => bus.rutaNombre == widget.lineaConductor)
+                        .toList()
+                    : busProvider.buses;
+
                 return MarkerLayer(
-                  markers: busProvider.buses.map((bus) {
-                    // Color según sentido (ida=azul, vuelta=rojo)
-                    final Color colorBus = bus.sentido == 'ida'
-                        ? Colors.blue.shade700
-                        : Colors.red.shade700;
+                  markers: buses.map((bus) {
+                    // 🆕 COLOR ESPECIAL PARA MODO CONDUCTOR
+                    final Color colorBus;
+                    if (widget.modoConductor) {
+                      colorBus =
+                          Colors.orange.shade700; // Naranja para conductor
+                    } else {
+                      colorBus = bus.sentido == 'ida'
+                          ? Colors.blue.shade700
+                          : Colors.red.shade700;
+                    }
 
                     return Marker(
                       point: LatLng(
@@ -178,7 +211,7 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
             ),
 
             // ════════════════════════════════════════════════════════
-            // MARCADOR DEL USUARIO
+            // MARCADOR DEL USUARIO/CONDUCTOR
             // ════════════════════════════════════════════════════════
             if (_userLocation != null)
               MarkerLayer(
@@ -189,19 +222,28 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                     height: 50,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.green.shade500,
+                        color: widget.modoConductor
+                            ? Colors
+                                .orange.shade500 // 🆕 Naranja para conductor
+                            : Colors.green.shade500, // Verde para usuario
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 4),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.green.withOpacity(0.3),
+                            color: (widget.modoConductor
+                                    ? Colors.orange
+                                    : Colors.green)
+                                .withOpacity(0.3),
                             blurRadius: 10,
                             spreadRadius: 3,
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.person,
+                      child: Icon(
+                        widget.modoConductor
+                            ? Icons
+                                .directions_bus // 🆕 Icono bus para conductor
+                            : Icons.person, // Icono persona para usuario
                         color: Colors.white,
                         size: 24,
                       ),
@@ -211,6 +253,80 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
               ),
           ],
         ),
+
+        // ════════════════════════════════════════════════════════
+        // 🆕 BANNER MODO CONDUCTOR
+        // ════════════════════════════════════════════════════════
+        if (widget.modoConductor)
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade700,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.directions_bus, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'MODO CONDUCTOR',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          'Línea: ${widget.lineaConductor}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade400,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.gps_fixed, size: 12, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(
+                          'ACTIVO',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
         // ════════════════════════════════════════════════════════
         // LOADING DE UBICACIÓN
@@ -234,11 +350,13 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
           ),
 
         // ════════════════════════════════════════════════════════
-        // BOTÓN PARA CENTRAR EN MI UBICACIÓN
+        // BOTONES FLOTANTES
         // ════════════════════════════════════════════════════════
         if (_userLocation != null)
           Positioned(
-            bottom: 80,
+            bottom: widget.modoConductor
+                ? 120
+                : 80, // 🆕 Ajustar posición en modo conductor
             right: 16,
             child: Column(
               children: [
@@ -250,33 +368,86 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                     _mapController.move(_userLocation!, 16.0);
                   },
                   heroTag: 'mi_ubicacion',
-                  child: Icon(Icons.my_location, color: Colors.indigo.shade700),
+                  child: Icon(Icons.my_location,
+                      color: widget.modoConductor
+                          ? Colors.orange.shade700
+                          : Colors.indigo.shade700),
                 ),
 
                 const SizedBox(height: 8),
 
-                // 🆕 Botón: Limpiar ruta seleccionada
-                Consumer<RutaProvider>(
-                  builder: (context, rutaProvider, child) {
-                    if (rutaProvider.rutaSeleccionada == null) {
-                      return const SizedBox.shrink();
-                    }
+                // 🆕 Botón: Cambiar sentido (SOLO MODO CONDUCTOR)
+                if (widget.modoConductor)
+                  FloatingActionButton(
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    onPressed: _cambiarSentido,
+                    heroTag: 'cambiar_sentido',
+                    child: Icon(Icons.swap_horiz, color: Colors.blue.shade700),
+                  ),
 
-                    return FloatingActionButton(
-                      mini: true,
-                      backgroundColor: Colors.white,
-                      onPressed: () {
-                        rutaProvider.deseleccionarRuta();
-                      },
-                      heroTag: 'limpiar_ruta',
-                      child: Icon(Icons.close, color: Colors.red.shade700),
-                    );
-                  },
-                ),
+                const SizedBox(height: 8),
+
+                // Botón: Limpiar ruta seleccionada (SOLO MODO USUARIO)
+                if (!widget.modoConductor)
+                  Consumer<RutaProvider>(
+                    builder: (context, rutaProvider, child) {
+                      if (rutaProvider.rutaSeleccionada == null) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return FloatingActionButton(
+                        mini: true,
+                        backgroundColor: Colors.white,
+                        onPressed: () {
+                          rutaProvider.deseleccionarRuta();
+                        },
+                        heroTag: 'limpiar_ruta',
+                        child: Icon(Icons.close, color: Colors.red.shade700),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
       ],
+    );
+  }
+
+  // 🆕 MÉTODO PARA CAMBIAR SENTIDO (MODO CONDUCTOR)
+  void _cambiarSentido() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Cambiar Sentido'),
+        content: Text('Selecciona el sentido de la ruta:'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Aquí implementarías el cambio de sentido
+              print('Sentido cambiado a IDA');
+            },
+            child: Text('IDA'),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Aquí implementarías el cambio de sentido
+              print('Sentido cambiado a VUELTA');
+            },
+            child: Text('VUELTA'),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+          ),
+        ],
+      ),
     );
   }
 

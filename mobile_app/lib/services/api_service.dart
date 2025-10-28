@@ -132,4 +132,82 @@ class ApiService {
       return [];
     }
   }
+
+  // 🆕 NUEVO MÉTODO: Login de conductor
+  Future<Map<String, dynamic>?> loginConductor({
+    required String correo,
+    required String contrasena,
+    required String placa,
+    required String linea,
+  }) async {
+    try {
+      final result = await post('/conductor/login', {
+        'correo': correo,
+        'contrasena': contrasena,
+        'placa': placa,
+        'linea': linea,
+      });
+
+      return result['data'];
+    } catch (e) {
+      print('Error en login conductor: $e');
+      return null;
+    }
+  }
+
+  // 🆕 NUEVO MÉTODO: Actualizar ubicación del conductor
+  Future<bool> actualizarUbicacionConductor({
+    required String conductorId,
+    required double latitud,
+    required double longitud,
+    double? velocidad,
+    double? direccion,
+    String? sentido,
+  }) async {
+    try {
+      final result = await post('/conductor/ubicacion', {
+        'conductor_id': conductorId,
+        'latitud': latitud,
+        'longitud': longitud,
+        'velocidad': velocidad,
+        'direccion': direccion,
+        'sentido': sentido,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
+      return result['success'] == true;
+    } catch (e) {
+      print('Error actualizando ubicación conductor: $e');
+      return false;
+    }
+  }
+
+  // 🆕 NUEVO MÉTODO: Obtener ruta del conductor
+  Future<Map<String, dynamic>?> getRutaConductor(String linea) async {
+    try {
+      final result = await get('/rutas/linea/$linea');
+      return result['data'];
+    } catch (e) {
+      print('Error al obtener ruta del conductor: $e');
+      return null;
+    }
+  }
+
+  // 🆕 NUEVO MÉTODO: Cambiar sentido del conductor
+  Future<bool> cambiarSentidoConductor({
+    required String conductorId,
+    required String sentido,
+  }) async {
+    try {
+      final result = await post('/conductor/cambiar-sentido', {
+        'conductor_id': conductorId,
+        'sentido': sentido,
+      });
+
+      return result['success'] == true;
+    } catch (e) {
+      print('Error cambiando sentido conductor: $e');
+      return false;
+    }
+  }
 }

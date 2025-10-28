@@ -11,6 +11,8 @@ import '../../widgets/resultado_busqueda_widget.dart';
 import '../providers/ruta_provider.dart';
 import '../providers/ubicacion_provider.dart';
 import 'welcome_screen.dart';
+import 'login_conductor_screen.dart'; // 🆕 AGREGAR ESTA LÍNEA
+import '../providers/conductor_provider.dart'; // 🆕 NUEVO IMPORT
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -94,7 +96,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // El mapa ya se actualizará automáticamente gracias al Provider
   }
 
-  Future<void> _mostrarMenuPerfil() async {
+  // ... (código anterior igual hasta _mostrarMenuPerfil)
+
+  void _mostrarMenuPerfil() async {
+    final conductorProvider = context.read<ConductorProvider>();
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -116,7 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             CircleAvatar(
               radius: 40,
-              backgroundColor: Colors.indigo.shade700,
+              backgroundColor: conductorProvider.estaLogeado
+                  ? Colors.orange.shade700 // 🆕 Naranja si es conductor
+                  : Colors.indigo.shade700, // Azul si es usuario normal
               child: Text(
                 widget.username[0].toUpperCase(),
                 style: const TextStyle(
@@ -134,18 +142,71 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            // 🆕 MOSTRAR INFO EXTRA SI ES CONDUCTOR
+            if (conductorProvider.estaLogeado) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Conductor - ${conductorProvider.conductor?.linea ?? ''}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.orange.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
+
+            // 🆕 OPCIONES SEGÚN MODO
+            if (conductorProvider.estaLogeado) ...[
+              // MODO CONDUCTOR ACTIVO
+              ListTile(
+                leading:
+                    Icon(Icons.directions_bus, color: Colors.orange.shade700),
+                title: Text('Modo Conductor Activo'),
+                subtitle: Text('Línea ${conductorProvider.conductor?.linea}'),
+                trailing:
+                    Icon(Icons.check_circle, color: Colors.green.shade700),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Ya está en modo conductor, no hacer nada
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.logout, color: Colors.orange.shade700),
+                title: Text('Salir del Modo Conductor'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _salirModoConductor();
+                },
+              ),
+              const Divider(),
+            ] else ...[
+              // MODO USUARIO NORMAL
+              ListTile(
+                leading:
+                    Icon(Icons.directions_bus, color: Colors.orange.shade700),
+                title: Text('Modo Conductor'),
+                subtitle: Text('Iniciar sesión como conductor'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _irALoginConductor();
+                },
+              ),
+              const Divider(),
+            ],
+
+            // OPCIONES COMUNES
             ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Cambiar nombre'),
+              leading: Icon(Icons.edit),
+              title: Text('Cambiar nombre'),
               onTap: () {
                 Navigator.pop(context);
                 _cambiarNombre();
               },
             ),
             ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text(
                 'Cerrar sesión',
                 style: TextStyle(color: Colors.red),
               ),
@@ -156,6 +217,54 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+// 🆕 NUEVO MÉTODO: Salir del modo conductor
+  Future<void> _salirModoConductor() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Salir del Modo Conductor'),
+        content: Text('¿Estás seguro de que quieres salir del modo conductor?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700),
+            child: Text('Salir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      final conductorProvider = context.read<ConductorProvider>();
+      await conductorProvider.logout();
+
+      // Recargar la página para volver al modo usuario
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(username: widget.username),
+          ),
+        );
+      }
+    }
+  }
+
+// 🆕 NUEVO MÉTODO: Navegar al login de conductor
+  void _irALoginConductor() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginConductorScreen(),
       ),
     );
   }
@@ -269,7 +378,14 @@ class _HomeScreenState extends State<HomeScreen> {
           // ════════════════════════════════════════════════════════
           // MAPA PRINCIPAL
           // ════════════════════════════════════════════════════════
-          const MapaTiempoRealScreen(),
+          Consumer<ConductorProvider>(
+            builder: (context, conductorProvider, child) {
+              return MapaTiempoRealScreen(
+                modoConductor: conductorProvider.estaLogeado,
+                lineaConductor: conductorProvider.conductor?.linea,
+              );
+            },
+          ),
 
           // ════════════════════════════════════════════════════════
           // WIDGETS SOBRE EL MAPA
