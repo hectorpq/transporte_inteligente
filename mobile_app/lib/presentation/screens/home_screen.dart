@@ -1,9 +1,15 @@
 // lib/presentation/screens/home_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'mapa_tiempo_real_screen.dart';
 import '../../widgets/chat_floating_button.dart';
+import '../../widgets/lineas_cercanas_widget.dart';
+import '../../widgets/buscador_destino_widget.dart';
+import '../../widgets/resultado_busqueda_widget.dart';
+import '../providers/ruta_provider.dart';
+import '../providers/ubicacion_provider.dart';
 import 'welcome_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,6 +25,75 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _mostrandoResultados = false;
+  String _textoBusqueda = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _inicializarDatos();
+  }
+
+  Future<void> _inicializarDatos() async {
+    final ubicacionProvider = context.read<UbicacionProvider>();
+    final rutaProvider = context.read<RutaProvider>();
+
+    // Obtener ubicación del usuario
+    await ubicacionProvider.obtenerUbicacionActual();
+
+    // Cargar rutas cercanas
+    final posicion = ubicacionProvider.posicionActual;
+    if (posicion != null) {
+      await rutaProvider.cargarRutasCercanas(
+        posicion.latitude,
+        posicion.longitude,
+        radioKm: 3.0,
+      );
+    }
+  }
+
+  Future<void> _buscarRutas(String destino) async {
+    setState(() {
+      _textoBusqueda = destino;
+      _mostrandoResultados = true;
+    });
+
+    final ubicacionProvider = context.read<UbicacionProvider>();
+    final rutaProvider = context.read<RutaProvider>();
+
+    final posicion = ubicacionProvider.posicionActual;
+    if (posicion != null) {
+      await rutaProvider.buscarPorDestino(
+        destino,
+        posicion.latitude,
+        posicion.longitude,
+        radioKm: 5.0,
+      );
+    }
+  }
+
+  void _limpiarBusqueda() {
+    setState(() {
+      _mostrandoResultados = false;
+      _textoBusqueda = '';
+    });
+    context.read<RutaProvider>().limpiarBusqueda();
+  }
+
+  void _verRuta(ruta) async {
+    final rutaProvider = context.read<RutaProvider>();
+
+    // Seleccionar la ruta (esto carga las coordenadas completas)
+    await rutaProvider.seleccionarRuta(ruta.id);
+
+    // Limpiar búsqueda si estaba activa
+    if (_mostrandoResultados) {
+      _limpiarBusqueda();
+    }
+
+    // El mapa ya se actualizará automáticamente gracias al Provider
+  }
+
   Future<void> _mostrarMenuPerfil() async {
     showModalBottomSheet(
       context: context,
@@ -191,10 +266,68 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Stack(
         children: [
-          // Mapa principal (tu pantalla existente)
-          MapaTiempoRealScreen(),
+          // ════════════════════════════════════════════════════════
+          // MAPA PRINCIPAL
+          // ════════════════════════════════════════════════════════
+          const MapaTiempoRealScreen(),
 
-          // Botón flotante de chat
+          // ════════════════════════════════════════════════════════
+          // WIDGETS SOBRE EL MAPA
+          // ════════════════════════════════════════════════════════
+          SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+
+                // 🔍 BUSCADOR
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Consumer<RutaProvider>(
+                    builder: (context, rutaProvider, child) {
+                      return BuscadorDestinoWidget(
+                        onBuscar: _buscarRutas,
+                        onLimpiar: _limpiarBusqueda,
+                        cargando: rutaProvider.cargando,
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // 🚌 LÍNEAS CERCANAS o RESULTADOS DE BÚSQUEDA
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Consumer2<RutaProvider, UbicacionProvider>(
+                    builder: (context, rutaProvider, ubicacionProvider, child) {
+                      // Mostrar resultados de búsqueda
+                      if (_mostrandoResultados) {
+                        return ResultadoBusquedaWidget(
+                          resultados: rutaProvider.resultadosBusqueda,
+                          textoBusqueda: _textoBusqueda,
+                          onVerRuta: _verRuta,
+                        );
+                      }
+
+                      // Mostrar líneas cercanas
+                      final posicion = ubicacionProvider.posicionActual;
+                      return LineasCercanasWidget(
+                        rutasCercanas: rutaProvider.rutasCercanas,
+                        cargando: rutaProvider.cargando,
+                        onVerRuta: _verRuta,
+                        miLatitud: posicion?.latitude,
+                        miLongitud: posicion?.longitude,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ════════════════════════════════════════════════════════
+          // BOTÓN FLOTANTE DE CHAT
+          // ════════════════════════════════════════════════════════
           Positioned(
             right: 16,
             bottom: 16,

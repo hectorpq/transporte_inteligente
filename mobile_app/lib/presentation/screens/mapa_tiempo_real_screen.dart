@@ -6,6 +6,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../providers/bus_provider.dart';
+import '../providers/ruta_provider.dart';
+import '../providers/ubicacion_provider.dart';
 import '../../widgets/tiempo_llegada_widget.dart';
 import '../../config/constants.dart';
 
@@ -69,7 +71,9 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Mapa principal
+        // ════════════════════════════════════════════════════════
+        // MAPA PRINCIPAL
+        // ════════════════════════════════════════════════════════
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(
@@ -89,41 +93,55 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
               maxZoom: 19,
             ),
 
-            // 🛣️ LÍNEA AZUL DE LA RUTA (AGREGAR ESTO)
-            Consumer<BusProvider>(
-              builder: (context, busProvider, child) {
-                if (busProvider.buses.isEmpty) return const SizedBox.shrink();
+            // ════════════════════════════════════════════════════════
+            // 🆕 RUTAS IDA (AZUL) Y VUELTA (ROJO)
+            // ════════════════════════════════════════════════════════
+            Consumer<RutaProvider>(
+              builder: (context, rutaProvider, child) {
+                final rutaSeleccionada = rutaProvider.rutaSeleccionada;
 
-                // Crear lista de puntos ordenados por la ruta
-                List<LatLng> puntosRuta = busProvider.buses.map((bus) {
-                  return LatLng(
-                    double.parse(bus.latitud.toString()),
-                    double.parse(bus.longitud.toString()),
-                  );
-                }).toList();
-
-                // Ordenar por latitud para formar una línea coherente
-                puntosRuta.sort((a, b) => a.latitude.compareTo(b.latitude));
+                if (rutaSeleccionada == null) {
+                  return const SizedBox.shrink();
+                }
 
                 return PolylineLayer(
                   polylines: [
-                    Polyline(
-                      points: puntosRuta,
-                      color: Colors.blue.shade700,
-                      strokeWidth: 5.0,
-                      borderColor: Colors.white,
-                      borderStrokeWidth: 2.0,
-                    ),
+                    // LÍNEA AZUL - IDA
+                    if (rutaSeleccionada.coordinadasIda.isNotEmpty)
+                      Polyline(
+                        points: rutaSeleccionada.coordinadasIda,
+                        color: Colors.blue.shade700,
+                        strokeWidth: 5.0,
+                        borderColor: Colors.white,
+                        borderStrokeWidth: 2.0,
+                      ),
+
+                    // LÍNEA ROJA - VUELTA
+                    if (rutaSeleccionada.coordinadasVuelta.isNotEmpty)
+                      Polyline(
+                        points: rutaSeleccionada.coordinadasVuelta,
+                        color: Colors.red.shade700,
+                        strokeWidth: 5.0,
+                        borderColor: Colors.white,
+                        borderStrokeWidth: 2.0,
+                      ),
                   ],
                 );
               },
             ),
 
-            // Marcadores de buses
+            // ════════════════════════════════════════════════════════
+            // MARCADORES DE BUSES
+            // ════════════════════════════════════════════════════════
             Consumer<BusProvider>(
               builder: (context, busProvider, child) {
                 return MarkerLayer(
                   markers: busProvider.buses.map((bus) {
+                    // Color según sentido (ida=azul, vuelta=rojo)
+                    final Color colorBus = bus.sentido == 'ida'
+                        ? Colors.blue.shade700
+                        : Colors.red.shade700;
+
                     return Marker(
                       point: LatLng(
                         double.parse(bus.latitud.toString()),
@@ -135,7 +153,7 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                         onTap: () => _mostrarInfoBus(bus),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.indigo.shade700,
+                            color: colorBus,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 3),
                             boxShadow: [
@@ -159,7 +177,9 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
               },
             ),
 
-            // Marcador del usuario
+            // ════════════════════════════════════════════════════════
+            // MARCADOR DEL USUARIO
+            // ════════════════════════════════════════════════════════
             if (_userLocation != null)
               MarkerLayer(
                 markers: [
@@ -169,12 +189,12 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                     height: 50,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade500,
+                        color: Colors.green.shade500,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 4),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blue.withOpacity(0.3),
+                            color: Colors.green.withOpacity(0.3),
                             blurRadius: 10,
                             spreadRadius: 3,
                           ),
@@ -192,51 +212,9 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
           ],
         ),
 
-        // Widget de tiempo de llegada
-        Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: Consumer<BusProvider>(
-            builder: (context, busProvider, child) {
-              if (busProvider.buses.isEmpty || _userLocation == null) {
-                return const SizedBox.shrink();
-              }
-
-              // Encontrar el bus más cercano
-              var busMasCercano = busProvider.buses.first;
-              double menorDistancia = double.infinity;
-
-              for (var bus in busProvider.buses) {
-                final distancia = Geolocator.distanceBetween(
-                  _userLocation!.latitude,
-                  _userLocation!.longitude,
-                  double.parse(bus.latitud.toString()),
-                  double.parse(bus.longitud.toString()),
-                );
-
-                if (distancia < menorDistancia) {
-                  menorDistancia = distancia;
-                  busMasCercano = bus;
-                }
-              }
-
-              // Calcular tiempo aproximado (distancia / velocidad promedio)
-              final velocidadPromedio = 25.0; // km/h
-              final distanciaKm = menorDistancia / 1000;
-              final tiempoHoras = distanciaKm / velocidadPromedio;
-              final tiempoMinutos = (tiempoHoras * 60).round();
-
-              return TiempoLlegadaWidget(
-                rutaNombre: busMasCercano.rutaNombre ?? 'Ruta desconocida',
-                minutos: tiempoMinutos,
-                placa: busMasCercano.placa,
-              );
-            },
-          ),
-        ),
-
-        // Loading de ubicación
+        // ════════════════════════════════════════════════════════
+        // LOADING DE UBICACIÓN
+        // ════════════════════════════════════════════════════════
         if (_isLoadingLocation)
           Container(
             color: Colors.black.withOpacity(0.3),
@@ -255,18 +233,47 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
             ),
           ),
 
-        // Botón para centrar en mi ubicación
+        // ════════════════════════════════════════════════════════
+        // BOTÓN PARA CENTRAR EN MI UBICACIÓN
+        // ════════════════════════════════════════════════════════
         if (_userLocation != null)
           Positioned(
             bottom: 80,
             right: 16,
-            child: FloatingActionButton(
-              mini: true,
-              backgroundColor: Colors.white,
-              onPressed: () {
-                _mapController.move(_userLocation!, 16.0);
-              },
-              child: Icon(Icons.my_location, color: Colors.indigo.shade700),
+            child: Column(
+              children: [
+                // Botón: Mi ubicación
+                FloatingActionButton(
+                  mini: true,
+                  backgroundColor: Colors.white,
+                  onPressed: () {
+                    _mapController.move(_userLocation!, 16.0);
+                  },
+                  heroTag: 'mi_ubicacion',
+                  child: Icon(Icons.my_location, color: Colors.indigo.shade700),
+                ),
+
+                const SizedBox(height: 8),
+
+                // 🆕 Botón: Limpiar ruta seleccionada
+                Consumer<RutaProvider>(
+                  builder: (context, rutaProvider, child) {
+                    if (rutaProvider.rutaSeleccionada == null) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return FloatingActionButton(
+                      mini: true,
+                      backgroundColor: Colors.white,
+                      onPressed: () {
+                        rutaProvider.deseleccionarRuta();
+                      },
+                      heroTag: 'limpiar_ruta',
+                      child: Icon(Icons.close, color: Colors.red.shade700),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
       ],
@@ -301,12 +308,16 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.indigo.shade50,
+                    color: bus.sentido == 'ida'
+                        ? Colors.blue.shade50
+                        : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.directions_bus,
-                    color: Colors.indigo.shade700,
+                    color: bus.sentido == 'ida'
+                        ? Colors.blue.shade700
+                        : Colors.red.shade700,
                     size: 32,
                   ),
                 ),
@@ -323,7 +334,7 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
                         ),
                       ),
                       Text(
-                        bus.rutaNombre ?? 'Ruta desconocida',
+                        '${bus.rutaNombre ?? 'Ruta desconocida'} - ${bus.sentido == 'ida' ? 'IDA' : 'VUELTA'}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -344,6 +355,12 @@ class _MapaTiempoRealScreenState extends State<MapaTiempoRealScreen> {
               icon: Icons.navigation,
               label: 'Dirección',
               value: '${bus.direccion ?? 0}°',
+            ),
+            _InfoRow(
+              icon:
+                  bus.sentido == 'ida' ? Icons.arrow_forward : Icons.arrow_back,
+              label: 'Sentido',
+              value: bus.sentido == 'ida' ? 'IDA' : 'VUELTA',
             ),
             const SizedBox(height: 16),
           ],

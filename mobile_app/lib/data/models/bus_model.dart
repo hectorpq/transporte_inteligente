@@ -12,6 +12,9 @@ class BusModel {
   final String? estado;
   final DateTime? ultimaActualizacion;
 
+  // 🆕 NUEVO: Sentido del bus (ida o vuelta)
+  final String sentido; // 'ida' o 'vuelta'
+
   BusModel({
     required this.busId,
     this.placa,
@@ -23,6 +26,7 @@ class BusModel {
     this.direccion,
     this.estado,
     this.ultimaActualizacion,
+    this.sentido = 'ida', // Por defecto 'ida'
   });
 
   factory BusModel.fromJson(Map<String, dynamic> json) {
@@ -39,6 +43,7 @@ class BusModel {
       ultimaActualizacion: json['ultima_actualizacion'] != null
           ? DateTime.parse(json['ultima_actualizacion'])
           : null,
+      sentido: json['sentido'] ?? 'ida', // 🆕
     );
   }
 
@@ -53,6 +58,7 @@ class BusModel {
       'velocidad': velocidad,
       'direccion': direccion,
       'estado': estado,
+      'sentido': sentido, // 🆕
     };
   }
 
@@ -67,6 +73,7 @@ class BusModel {
     dynamic direccion,
     String? estado,
     DateTime? ultimaActualizacion,
+    String? sentido, // 🆕
   }) {
     return BusModel(
       busId: busId ?? this.busId,
@@ -79,6 +86,7 @@ class BusModel {
       direccion: direccion ?? this.direccion,
       estado: estado ?? this.estado,
       ultimaActualizacion: ultimaActualizacion ?? this.ultimaActualizacion,
+      sentido: sentido ?? this.sentido, // 🆕
     );
   }
 }
